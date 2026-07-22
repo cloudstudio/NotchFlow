@@ -13,6 +13,12 @@ what your AI coding agents (**Claude Code**, **Codex**) are doing in real time:
 who's working, who needs your permission, who's done. Glance up, approve from the
 notch, keep coding. Local‑only, no account, no telemetry.
 
+
+
+https://github.com/user-attachments/assets/3c811d93-4a16-49cc-a1ff-99c54597c6ed
+
+
+
 ---
 
 ## Install (plug and play)
