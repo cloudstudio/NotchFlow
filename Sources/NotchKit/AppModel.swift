@@ -457,17 +457,6 @@ public final class AppModel: ObservableObject {
         scheduleSave()
     }
 
-    // MARK: - Demo seams
-
-    func injectQuota(_ quota: QuotaState) { applyQuota(quota) }
-
-    func demoReset() {
-        reducer = SessionReducer()
-        pendingInteractions.removeAll()
-        pingAt = nil; resolvedFlashAt = nil; winkAt = nil
-        publish()
-    }
-
     private func publish() {
         sessions = reducer.orderedSessions
         quotas = reducer.orderedQuotas

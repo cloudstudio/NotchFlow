@@ -16,9 +16,6 @@ public final class UsageStore: ObservableObject {
     private static let cacheVersion = 2
     private var fileCache: [String: FileEntry] = [:]
     private var refreshing = false
-    /// When the demo director seeds synthetic usage, the real transcript scan
-    /// must never overwrite it: both refresh paths bail out while locked.
-    private var demoLocked = false
 
     struct FileEntry: Codable {
         let size: Int
@@ -36,22 +33,12 @@ public final class UsageStore: ObservableObject {
         events = fileCache.values.flatMap(\.events)
     }
 
-    /// Replaces the corpus with a fixed demo set and locks out the live scan,
-    /// so a hands-free cinematic shows stable, hand-picked numbers.
-    func loadDemo(_ demoEvents: [UsageEvent]) {
-        events = demoEvents
-        lastRefresh = Date()
-        demoLocked = true
-    }
-
     public func refreshIfStale(maxAge: TimeInterval = 30) {
-        if demoLocked { return }
         if let lastRefresh, Date().timeIntervalSince(lastRefresh) < maxAge { return }
         refresh()
     }
 
     func refresh() {
-        if demoLocked { return }
         guard !refreshing else { return }
         refreshing = true
         let cache = fileCache

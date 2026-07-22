@@ -49,7 +49,7 @@ final class Voice {
 
     // MARK: - Cache
 
-    private static let cacheDirectory: URL = {
+    nonisolated private static let cacheDirectory: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("NotchFlow/voice-cache", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

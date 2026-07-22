@@ -43,7 +43,7 @@ public final class PluginManager: ObservableObject {
     }
 
     /// Read-only tools safe to auto-approve. Never writes/edits/shell.
-    public static let safeTools: Set<String> = [
+    nonisolated public static let safeTools: Set<String> = [
         "read", "grep", "glob", "ls", "webfetch", "websearch", "notebookread",
         "read_file", "list_dir", "search"
     ]

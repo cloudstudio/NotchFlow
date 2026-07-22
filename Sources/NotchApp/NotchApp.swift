@@ -19,7 +19,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = AppModel()
     private let bridge = BridgeServer()
     private var panel: NotchPanel?
-    private var demo: DemoDirector?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -27,18 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         createPanel()
         model.startPointerTracking()
 
-        // --demo replaces every live source with a scripted cinematic, so a
-        // recording never waits on real agents and never leaks real data.
-        if ProcessInfo.processInfo.arguments.contains("--demo") {
-            let demo = DemoDirector(model: model)
-            self.demo = demo
-            demo.start()
-        } else {
-            model.startLiveServices()
-            bridge.start { [weak model] envelope, respond in
-                Task { @MainActor in
-                    model?.receive(envelope, respond: respond)
-                }
+        model.startLiveServices()
+        bridge.start { [weak model] envelope, respond in
+            Task { @MainActor in
+                model?.receive(envelope, respond: respond)
             }
         }
 
@@ -52,7 +43,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        demo?.stop()
         model.stopLiveServices()
         bridge.stop()
     }
