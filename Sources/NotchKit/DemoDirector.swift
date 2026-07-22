@@ -68,12 +68,15 @@ public final class DemoDirector {
     private func launchLoop() {
         loopTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            var i = self.startIndex
-            while !Task.isCancelled {
-                let ok = await self.play(self.order[i % self.order.count])
+            // One full pass through every scenario, then STOP (no loop).
+            // Press r to replay from the start, or 1–5 to jump to one.
+            for step in 0..<self.order.count {
+                if Task.isCancelled { return }
+                let index = (self.startIndex + step) % self.order.count
+                let ok = await self.play(self.order[index])
                 if !ok { return }
-                i += 1
             }
+            self.model.setExpanded(false)
         }
     }
 
@@ -111,7 +114,7 @@ public final class DemoDirector {
     // MARK: - Scenario 1 · the story
 
     private let rootId = "demo-root"
-    private let storyCwd = "/Users/you/acme-checkout"
+    private let storyCwd = "/Users/you/checkout-web"
     private let terminal = "iTerm.app"
 
     private func scenarioStory() async -> Bool {
@@ -218,7 +221,7 @@ public final class DemoDirector {
     private func scenarioQuestion() async -> Bool {
         reset()
         let id = "demo-ask"
-        started(id, cwd: "/Users/you/cloudstudio-evals", terminal: "WarpTerminal")
+        started(id, cwd: "/Users/you/web-dashboard", terminal: "WarpTerminal")
         guard await beat(0.6) else { return false }
 
         let request = InteractionRequest(
@@ -227,24 +230,24 @@ public final class DemoDirector {
             title: "Claude asks",
             questions: [
                 AgentQuestion(
-                    header: "Objetivo",
-                    question: "¿Qué quieres evaluar principalmente con este sistema de evals?",
+                    header: "Pagination",
+                    question: "How should the new /orders endpoint paginate?",
                     options: [
-                        QuestionOption(label: "Prompts de mi producto",
-                                       description: "Casos reales de tu app (features LLM de Sesame)"),
-                        QuestionOption(label: "Comparar modelos",
-                                       description: "Mismo set contra Claude, GPT, Gemini para decidir"),
-                        QuestionOption(label: "Agentes / RAG",
-                                       description: "Flujos multi-paso: tool use, retrieval")
+                        QuestionOption(label: "Cursor-based",
+                                       description: "Opaque cursor — stable under inserts, best for infinite scroll"),
+                        QuestionOption(label: "Offset / limit",
+                                       description: "Simple ?offset=&limit= — easy but drifts on writes"),
+                        QuestionOption(label: "Page number",
+                                       description: "?page=2 — familiar for a classic table UI")
                     ],
                     multiSelect: false
                 ),
                 AgentQuestion(
-                    header: "Stack",
-                    question: "¿Lenguaje principal?",
+                    header: "Auth",
+                    question: "Require an API key on this endpoint?",
                     options: [
-                        QuestionOption(label: "TypeScript / Node"),
-                        QuestionOption(label: "Python")
+                        QuestionOption(label: "Yes — API key"),
+                        QuestionOption(label: "Public / no auth")
                     ],
                     multiSelect: false
                 )
@@ -276,27 +279,27 @@ public final class DemoDirector {
     private func scenarioPlan() async -> Bool {
         reset()
         let id = "demo-plan"
-        started(id, cwd: "/Users/you/cloudstudio-course", terminal: "WarpTerminal")
+        started(id, cwd: "/Users/you/payments-service", terminal: "WarpTerminal")
         guard await beat(0.6) else { return false }
 
         let plan = """
-        ## Plan de producción — Programa "AI Engineering Intensivo"
+        ## Plan — Rate-limit the public API
 
-        Lanzamos un programa intensivo de IA: **8 semanas · 10 h/semana · 10 plazas**.
+        Protect the checkout + orders endpoints with a token-bucket limiter backed by Redis.
 
-        1. **Semana 1–2** — Fundamentos: prompting, evals, tool use.
-        2. **Semana 3–8** — Proyectos: RAG, agentes multi-paso, deploy.
-
-        **Repos** — uno por semana más una plantilla común:
+        1. **Middleware** — `middleware/rateLimit.ts`: 100 req/min per API key, sliding window.
+        2. **Store** — reuse the existing Redis client; keys `rl:<apiKey>:<window>`.
+        3. **Headers** — return `X-RateLimit-Remaining` and `Retry-After` on 429.
+        4. **Config** — per-tier limits in `config/limits.ts`, overridable by env:
 
         ```
-        cloudstudio-course/
-        ├── curso-ia-propuesta.html   # deck
-        ├── respuesta-tipo.md         # plantilla
-        └── temario/
+        payments-service/
+        ├── middleware/rateLimit.ts
+        ├── config/limits.ts
+        └── test/rateLimit.test.ts
         ```
 
-        **Idioma**: materiales en castellano, código en inglés.
+        **Rollout** — behind `RATE_LIMIT_ENABLED`, default off in dev.
         """
         let request = InteractionRequest(
             kind: .plan, providerEventName: "ExitPlanMode",
@@ -342,24 +345,55 @@ public final class DemoDirector {
 
     private func scenarioSwarm() async -> Bool {
         reset()
-        let projects = ["acme-checkout", "orders-api", "notchflow", "billing", "web"]
-        let tools = ["Grep", "Edit", "Bash", "Read", "Write"]
+        // A real fleet: each agent in its own repo, running a specific tool on a
+        // real file — mixed models and terminals, the way a busy afternoon looks.
+        let fleet: [(project: String, agent: AgentKind, model: String, term: String, tool: String, detail: String)] = [
+            ("payments-service", .claude, "claude-opus-4-8", "iTerm.app", "Edit", "src/stripe/webhook.ts"),
+            ("web-dashboard", .claude, "claude-sonnet-4-5", "WarpTerminal", "Bash", "pnpm test --filter dashboard"),
+            ("orders-api", .codex, "gpt-5-codex", "iTerm.app", "Edit", "internal/orders/handler.go"),
+            ("auth-gateway", .claude, "claude-sonnet-4-5", "iTerm.app", "Grep", "verifyJWT("),
+            ("notification-worker", .codex, "gpt-5-codex", "WarpTerminal", "Read", "queue/consumer.py"),
+            ("data-pipeline", .claude, "claude-opus-4-8", "iTerm.app", "Write", "dags/nightly_rollup.py"),
+            ("billing", .codex, "gpt-5-codex", "iTerm.app", "Bash", "cargo build --release"),
+            ("search-index", .claude, "claude-sonnet-4-5", "WarpTerminal", "Bash", "rg 'reindex' -l"),
+            ("checkout-web", .claude, "claude-sonnet-4-5", "iTerm.app", "Edit", "components/CartSummary.tsx"),
+            ("mobile-app", .claude, "claude-opus-4-8", "iTerm.app", "Bash", "xcodebuild -scheme App test")
+        ]
         var events: [AgentEvent] = []
-        for index in 1...10 {
+        for (index, member) in fleet.enumerated() {
             let id = "swarm-\(index)"
-            let cwd = "/Users/you/\(projects[index % projects.count])"
-            let agent: AgentKind = index % 4 == 0 ? .codex : .claude
             events.append(AgentEvent(
-                type: .sessionStarted, agent: agent, sessionId: id, cwd: cwd, terminal: terminal
+                type: .sessionStarted, agent: member.agent, sessionId: id,
+                cwd: "/Users/you/\(member.project)", terminal: member.term, model: member.model
             ))
             events.append(AgentEvent(
-                type: .toolStarted, agent: agent, sessionId: id,
-                tool: tools[index % tools.count], detail: "working…"
+                type: .toolStarted, agent: member.agent, sessionId: id,
+                tool: member.tool, detail: member.detail
             ))
         }
         model.applyBatch(events)
         model.setExpanded(true)
-        return await beat(9.0)
+        guard await beat(3.5) else { return false }
+
+        // The fleet moves: two finish, one blocks on you — so it reads live.
+        model.apply(AgentEvent(type: .toolFinished, agent: .claude, sessionId: "swarm-1"))
+        model.apply(AgentEvent(
+            type: .turnCompleted, agent: .claude, sessionId: "swarm-1",
+            detail: "Dashboard tests green — 142 passing", equivalentCostUSD: 0.61
+        ))
+        guard await beat(1.6) else { return false }
+        model.apply(AgentEvent(type: .toolFinished, agent: .codex, sessionId: "swarm-6"))
+        model.apply(AgentEvent(
+            type: .turnCompleted, agent: .codex, sessionId: "swarm-6",
+            detail: "cargo build finished — release ok", equivalentCostUSD: 0.19
+        ))
+        guard await beat(1.4) else { return false }
+        model.apply(AgentEvent(
+            type: .permissionRequested, agent: .claude, sessionId: "swarm-0",
+            tool: "Bash", detail: "stripe trigger payment_intent.succeeded"
+        ))
+        guard await beat(4.0) else { return false }
+        return await beat(2.0)
     }
 
     // MARK: - Helpers
@@ -370,7 +404,7 @@ public final class DemoDirector {
     }
 
     private func started(
-        _ id: String, cwd: String, model modelName: String? = "claude-opus-4",
+        _ id: String, cwd: String, model modelName: String? = "claude-opus-4-8",
         agent: AgentKind = .claude, terminal: String
     ) {
         model.apply(AgentEvent(
@@ -443,25 +477,25 @@ public final class DemoDirector {
         }
 
         let rows: [(Int, String, String, AgentKind, Double)] = [
-            (0, "acme-checkout", "claude-opus-4", .claude, 22.50),
-            (0, "notchflow", "claude-sonnet-4", .claude, 9.20),
+            (0, "checkout-web", "claude-opus-4-8", .claude, 22.50),
+            (0, "notchflow", "claude-sonnet-4-5", .claude, 9.20),
             (0, "orders-api", "gpt-5-codex", .codex, 8.30),
-            (1, "acme-checkout", "claude-opus-4", .claude, 18.00),
-            (1, "notchflow", "claude-sonnet-4", .claude, 7.00),
+            (1, "checkout-web", "claude-opus-4-8", .claude, 18.00),
+            (1, "notchflow", "claude-sonnet-4-5", .claude, 7.00),
             (1, "orders-api", "gpt-5-codex", .codex, 6.00),
-            (2, "acme-checkout", "claude-opus-4", .claude, 8.00),
-            (2, "notchflow", "claude-sonnet-4", .claude, 4.00),
-            (3, "acme-checkout", "claude-opus-4", .claude, 15.00),
+            (2, "checkout-web", "claude-opus-4-8", .claude, 8.00),
+            (2, "notchflow", "claude-sonnet-4-5", .claude, 4.00),
+            (3, "checkout-web", "claude-opus-4-8", .claude, 15.00),
             (3, "orders-api", "gpt-5-codex", .codex, 9.00),
-            (3, "notchflow", "claude-sonnet-4", .claude, 4.00),
-            (4, "acme-checkout", "claude-opus-4", .claude, 11.00),
-            (4, "notchflow", "claude-sonnet-4", .claude, 5.00),
+            (3, "notchflow", "claude-sonnet-4-5", .claude, 4.00),
+            (4, "checkout-web", "claude-opus-4-8", .claude, 11.00),
+            (4, "notchflow", "claude-sonnet-4-5", .claude, 5.00),
             (4, "orders-api", "gpt-5-codex", .codex, 3.00),
-            (5, "acme-checkout", "claude-opus-4", .claude, 20.00),
-            (5, "notchflow", "claude-sonnet-4", .claude, 8.00),
+            (5, "checkout-web", "claude-opus-4-8", .claude, 20.00),
+            (5, "notchflow", "claude-sonnet-4-5", .claude, 8.00),
             (5, "orders-api", "gpt-5-codex", .codex, 6.00),
-            (6, "acme-checkout", "claude-opus-4", .claude, 13.00),
-            (6, "notchflow", "claude-sonnet-4", .claude, 6.00),
+            (6, "checkout-web", "claude-opus-4-8", .claude, 13.00),
+            (6, "notchflow", "claude-sonnet-4-5", .claude, 6.00),
             (6, "orders-api", "gpt-5-codex", .codex, 4.00)
         ]
 

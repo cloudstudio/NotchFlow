@@ -53,6 +53,15 @@ public final class AppModel: ObservableObject {
     public let usage = UsageStore()
     let sounds = ChipTune()
     private let notifier = Notifier()
+    private let voice = Voice()
+
+    /// What the notch says for each interaction that opens it — the only
+    /// moments it speaks. Kept in one place so it can be pre-rendered on launch.
+    static let voiceLines: [InteractionKind: String] = [
+        .question: "Hey, I have a question for you.",
+        .plan: "I've got a plan for you to look at.",
+        .permission: "Can I get your go-ahead on something?"
+    ]
 
     enum ExpandedTab {
         case now
@@ -89,6 +98,12 @@ public final class AppModel: ObservableObject {
         hitTestState = (false, NotchGeometry.fallback.collapsedSize)
         loadSnapshot()
         refreshHooksInstalled()
+        // Render the fixed lines to the on-disk cache now, so the first time the
+        // notch needs to speak there is no synthesis wait. One-time cost across
+        // all launches — the WAVs persist.
+        if PluginManager.shared.isOn("voice") {
+            voice.prewarm(Array(Self.voiceLines.values))
+        }
     }
 
     // MARK: - Live services
@@ -459,6 +474,15 @@ public final class AppModel: ObservableObject {
         hottestQuota = reducer.hottestQuota()
     }
 
+    /// The auto-approve contract, pure so it can be exhaustively tested: allow a
+    /// request only when it is a permission (never a question or plan), the
+    /// plugin is on, and the tool is on the read-only safelist. Anything that can
+    /// write, edit, or run a shell must fall through to a human. Case-insensitive.
+    nonisolated static func shouldAutoApprove(kind: InteractionKind, tool: String?, autoApproveOn: Bool) -> Bool {
+        guard kind == .permission, autoApproveOn, let tool = tool?.lowercased() else { return false }
+        return PluginManager.safeTools.contains(tool)
+    }
+
     public func receive(
         _ envelope: BridgeEnvelope,
         respond: @escaping (InteractionDecision) -> Void
@@ -468,16 +492,24 @@ public final class AppModel: ObservableObject {
 
         // Auto-pilot plugin: silently allow read-only tools so parallel agents
         // stop making you babysit reads. Never questions or plans.
-        if request.kind == .permission,
-           PluginManager.shared.isOn("autoapprove"),
-           let tool = envelope.event.tool?.lowercased(),
-           PluginManager.safeTools.contains(tool) {
+        if AppModel.shouldAutoApprove(
+            kind: request.kind,
+            tool: envelope.event.tool,
+            autoApproveOn: PluginManager.shared.isOn("autoapprove")
+        ) {
             respond(InteractionDecision(requestId: request.id, action: .allow, answers: [:], message: nil))
             return
         }
 
         if request.kind == .question, !quietMode {
             sounds.play(.attention)
+        }
+        // The notch speaks only here — the moments a human is actually needed —
+        // never on the ambient per-session ready/fail transitions, so a fleet of
+        // agents can't turn it into a chatterbox. The voice plugin gates it off
+        // by default, and one line at a time (see Voice) throttles a burst.
+        if !quietMode, let line = Self.voiceLines[request.kind] {
+            voice.say(line)
         }
         pendingInteractions.removeAll { $0.request.id == request.id }
         pendingInteractions.append(PendingInteraction(

@@ -1,13 +1,15 @@
 # NotchFlow
 
+[![CI](https://github.com/cloudstudio/NotchFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudstudio/NotchFlow/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Platform: macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg)
+
 **Your coding agents, at a glance — from the notch.**
 
 NotchFlow is a tiny native macOS app that lives in your MacBook's notch and shows
 what your AI coding agents (**Claude Code**, **Codex**) are doing in real time:
 who's working, who needs your permission, who's done. Glance up, approve from the
 notch, keep coding. Local‑only, no account, no telemetry.
-
-![NotchFlow](docs/hero.png)
 
 ---
 
@@ -17,7 +19,7 @@ Requires **macOS 14+** and the Swift toolchain (Xcode or the Command Line Tools:
 `xcode-select --install`).
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/NotchFlow.git
+git clone https://github.com/cloudstudio/NotchFlow.git
 cd NotchFlow
 ./install.sh
 ```
@@ -66,6 +68,9 @@ Issues and PRs welcome. The code is small and focused:
 - `Sources/NotchKit` — the notch UI, the observer (`AppModel`), quota/usage monitors, plugins.
 - `Sources/NotchApp` — the thin app that puts the notch on screen.
 - `Sources/NotchFlowHook` / `NotchFlowInstaller` — the agent hook + its installer.
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for build/test/toolchain notes and
+**[SECURITY.md](SECURITY.md)** for the trust boundary and how to report issues.
 
 ## License
 

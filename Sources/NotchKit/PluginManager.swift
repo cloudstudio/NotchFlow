@@ -24,20 +24,28 @@ public final class PluginManager: ObservableObject {
         .init(id: "watchdog", name: "Idle / stuck watchdog",
               detail: "Alerts when an agent has waited on a permission too long, or is repeating a failing command.",
               symbol: "eye.trianglebadge.exclamationmark.fill"),
+        .init(id: "voice", name: "Speaking notch (Piper)",
+              detail: "The notch speaks up — “Hey, I have a question” — when an agent needs you, asks, or finishes. A local Piper voice, no account. Needs piper + a voice model installed.",
+              symbol: "waveform")
     ]
 
+    private let store: UserDefaults
+
     @Published public var enabled: Set<String> {
-        didSet { UserDefaults.standard.set(Array(enabled), forKey: "plugins.enabled") }
+        didSet { store.set(Array(enabled), forKey: "plugins.enabled") }
     }
 
-    private init() {
-        enabled = Set(UserDefaults.standard.stringArray(forKey: "plugins.enabled") ?? ["notifyfocus", "watchdog"])
+    /// `defaults` is injectable so tests can drive a scratch suite instead of
+    /// the shared domain. Production always uses `.standard` via `shared`.
+    init(defaults: UserDefaults = .standard) {
+        store = defaults
+        enabled = Set(defaults.stringArray(forKey: "plugins.enabled") ?? ["notifyfocus", "watchdog"])
     }
 
     /// Read-only tools safe to auto-approve. Never writes/edits/shell.
     public static let safeTools: Set<String> = [
         "read", "grep", "glob", "ls", "webfetch", "websearch", "notebookread",
-        "read_file", "list_dir", "search",
+        "read_file", "list_dir", "search"
     ]
 
     public func isOn(_ id: String) -> Bool { enabled.contains(id) }

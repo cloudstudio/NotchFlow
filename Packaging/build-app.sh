@@ -26,6 +26,14 @@ cp .build/release/notchflow-hook "$APP/Contents/Helpers/notchflow-hook"
 cp .build/release/notchflow-install "$APP/Contents/Helpers/notchflow-install"
 cp Packaging/Info.plist "$APP/Contents/Info.plist"
 
+# SwiftPM emits each target's resources as a *.bundle next to the binary
+# (e.g. NotchFlow_NotchKit.bundle holds the provider logos). Bundle.module
+# finds them via Bundle.main.resourceURL, so they must live in Contents/Resources.
+mkdir -p "$APP/Contents/Resources"
+for bundle in .build/release/*.bundle; do
+    [ -e "$bundle" ] && cp -R "$bundle" "$APP/Contents/Resources/"
+done
+
 codesign --force --sign "$IDENTITY" --options runtime "$APP/Contents/Helpers/notchflow-hook"
 codesign --force --sign "$IDENTITY" --options runtime "$APP/Contents/Helpers/notchflow-install"
 codesign --force --sign "$IDENTITY" --options runtime "$APP"

@@ -31,16 +31,16 @@ final class CodexRolloutMapperTests: XCTestCase {
 
     func testConversationFlowMapsToPromptAndCompletion() {
         let prompt = CodexRolloutMapper.events(fromLine: line(
-            #"{"timestamp":"2026-07-20T18:43:40.876Z","type":"event_msg","payload":{"type":"user_message","message":"hola\n"}}"#
+            #"{"timestamp":"2026-07-20T18:43:40.876Z","type":"event_msg","payload":{"type":"user_message","message":"hello\n"}}"#
         ), sessionId: "s")
         XCTAssertEqual(prompt.first?.type, .promptSubmitted)
-        XCTAssertEqual(prompt.first?.detail, "hola")
+        XCTAssertEqual(prompt.first?.detail, "hello")
 
         let done = CodexRolloutMapper.events(fromLine: line(
-            #"{"timestamp":"2026-07-20T18:43:42.947Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"¡Hola! ¿En qué te ayudo?"}}"#
+            #"{"timestamp":"2026-07-20T18:43:42.947Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Hi! How can I help?"}}"#
         ), sessionId: "s")
         XCTAssertEqual(done.first?.type, .turnCompleted)
-        XCTAssertEqual(done.first?.detail, "¡Hola! ¿En qué te ayudo?")
+        XCTAssertEqual(done.first?.detail, "Hi! How can I help?")
 
         let aborted = CodexRolloutMapper.events(fromLine: line(
             #"{"timestamp":"2026-07-20T18:43:42.947Z","type":"event_msg","payload":{"type":"turn_aborted","reason":"interrupted"}}"#

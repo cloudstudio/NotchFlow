@@ -18,7 +18,8 @@ let package = Package(
         .target(name: "NotchFlowCore"),
         .target(
             name: "NotchKit",
-            dependencies: ["NotchFlowCore"]
+            dependencies: ["NotchFlowCore"],
+            resources: [.copy("Resources")]
         ),
         .executableTarget(
             name: "NotchApp",
@@ -35,6 +36,10 @@ let package = Package(
         .testTarget(
             name: "NotchFlowCoreTests",
             dependencies: ["NotchFlowCore"]
+        ),
+        .testTarget(
+            name: "NotchKitTests",
+            dependencies: ["NotchKit", "NotchFlowCore"]
         )
     ],
     swiftLanguageModes: [.v5]

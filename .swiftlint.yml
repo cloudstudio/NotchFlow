@@ -1,0 +1,57 @@
+# NotchFlow SwiftLint — pragmatic, not pedantic. Size rules are advisory (warning)
+# and the CI job is non-blocking until the codebase fully settles; then flip to
+# `--strict` and tighten the error thresholds.
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+
+disabled_rules:
+  - trailing_whitespace   # noisy on SwiftUI modifier chains
+  - todo
+  - large_tuple           # (label, color, symbol) identity tuples read fine
+  - force_try             # only in tests, decoding known-good fixtures
+
+opt_in_rules:
+  - closure_spacing
+  - contains_over_first_not_nil
+  - first_where
+  - empty_count
+  - sorted_first_last
+  - unneeded_parentheses_in_closure_argument
+
+line_length:
+  warning: 140
+  error: 300
+  ignores_comments: true
+
+file_length:
+  warning: 600
+  error: 1200
+
+type_body_length:
+  warning: 400
+  error: 900
+
+function_body_length:
+  warning: 90
+  error: 250
+
+# 11 vs 10 is not worth a flag; SwiftUI switch-heavy view builders sit right at it.
+cyclomatic_complexity:
+  warning: 13
+  error: 20
+
+# Long lines are almost all JSON test fixtures — kept verbatim on purpose.
+nesting:
+  type_level: 2
+
+# Geometry and color math legitimately use short names (x, y, r, g, b, dx, dy).
+identifier_name:
+  min_length: 1
+  excluded: [id, x, y, r, g, b, dx, dy, l]
+
+reporter: "xcode"
