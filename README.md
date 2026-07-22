@@ -6,6 +6,8 @@
 
 **Your coding agents, at a glance — from the notch.**
 
+![NotchFlow — ten coding agents at a glance, from the notch](docs/hero.png)
+
 NotchFlow is a tiny native macOS app that lives in your MacBook's notch and shows
 what your AI coding agents (**Claude Code**, **Codex**) are doing in real time:
 who's working, who needs your permission, who's done. Glance up, approve from the
