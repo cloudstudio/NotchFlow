@@ -42,6 +42,8 @@ lights up.
   tool, **needs your permission**, idle, done, failed.
 - **Approve from the notch** — when an agent asks permission, Allow / Deny right
   there without switching windows.
+- **Voice alerts** — it literally talks: when a session finishes or gets stuck,
+  NotchFlow tells you out loud, so you can stop babysitting terminals.
 - **Quota & cost** — your Claude / Codex plan windows and today's API‑equivalent spend.
 - **Sub‑agents** — a Task fan‑out shows as a nested swarm.
 - **Monitoring plugins** — click‑to‑focus desktop alerts, an idle/stuck watchdog, and
